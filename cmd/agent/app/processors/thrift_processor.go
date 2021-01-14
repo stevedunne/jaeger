@@ -18,7 +18,10 @@ package processors
 import (
 	"fmt"
 	"sync"
-
+	"os"
+	"time"
+	"strings"
+	
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/uber/jaeger-lib/metrics"
 	"go.uber.org/zap"
@@ -42,6 +45,7 @@ type ThriftProcessor struct {
 		// Number of failed buffer process operations
 		HandlerProcessError metrics.Counter `metric:"thrift.udp.t-processor.handler-errors"`
 	}
+	errorsToDisk  bool
 }
 
 // AgentProcessor handler used by the processor to process thrift and call the reporter
@@ -60,6 +64,7 @@ func NewThriftProcessor(
 	factory thrift.TProtocolFactory,
 	handler AgentProcessor,
 	logger *zap.Logger,
+	errorsToDisk  bool,
 ) (*ThriftProcessor, error) {
 	if numProcessors <= 0 {
 		return nil, fmt.Errorf(
@@ -78,6 +83,7 @@ func NewThriftProcessor(
 		protocolPool:  protocolPool,
 		logger:        logger,
 		numProcessors: numProcessors,
+		errorsToDisk:  errorsToDisk,
 	}
 	metrics.Init(&res.metrics, mFactory, nil)
 	res.processing.Add(res.numProcessors)
@@ -118,11 +124,42 @@ func (s *ThriftProcessor) processBuffer() {
 		protocol.Transport().Write(payload)
 		s.logger.Debug("Span(s) received by the agent", zap.Int("bytes-received", len(payload)))
 
-		if ok, err := s.handler.Process(protocol, protocol); !ok {
+		if ok, err := s.handler.Process(context.Background(), protocol, protocol); !ok {
+			if(s.errorsToDisk){
+				dumpBinDataToFile(payload, s)
+			}
 			s.logger.Error("Processor failed", zap.Error(err))
 			s.metrics.HandlerProcessError.Inc(1)
 		}
 		s.protocolPool.Put(protocol)
 		s.server.DataRecd(readBuf) // acknowledge receipt and release the buffer
 	}
+}
+
+func showMessage(payload []byte, s *ThriftProcessor){
+	strPayload := string(payload) 
+	s.logger.Debug( fmt.Sprintf("Payload Contents %s", strPayload))
+}
+
+func dumpBinDataToFile(payload []byte, s *ThriftProcessor){
+	file, err  := os.Create(  getFilename() )
+	defer file.Close()
+	if err != nil {
+		s.logger.Debug( fmt.Sprintf("Failed to create binary data file %v+", err))
+	}
+	
+	_, err = file.Write(payload)
+
+	if err != nil {
+		s.logger.Debug( fmt.Sprintf("Failed to write binary data to file %v+", err))
+	}
+}
+
+func getFilename() string {
+    // Use layout string for time format.
+    const layout = "yyyy-MM-dd_hhmmss"
+    // Place now in the string.
+	t := time.Now()
+	
+    return "C:\\logs\\jaeger-agent-err-" + strings.ReplaceAll( t.Format(time.RFC3339), ":", "-") + ".bin"
 }

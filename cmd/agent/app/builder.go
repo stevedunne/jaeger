@@ -84,6 +84,7 @@ type ProcessorConfiguration struct {
 	Model    Model               `yaml:"model"`
 	Protocol Protocol            `yaml:"protocol"`
 	Server   ServerConfiguration `yaml:"server"`
+	ErrorsToDisk bool			 `yaml:"errorstodisk"`
 }
 
 // ServerConfiguration holds config for a server that receives spans from the network
@@ -178,7 +179,7 @@ func (c *ProcessorConfiguration) GetThriftProcessor(
 		return nil, fmt.Errorf("cannot create UDP Server: %w", err)
 	}
 
-	return processors.NewThriftProcessor(server, c.Workers, mFactory, factory, handler, logger)
+	return processors.NewThriftProcessor(server, c.Workers, mFactory, factory, handler, logger, c.ErrorsToDisk)
 }
 
 func (c *ProcessorConfiguration) applyDefaults() {

@@ -26,10 +26,15 @@ import (
 )
 
 const (
-	suffixWorkers             = "workers"
-	suffixServerQueueSize     = "server-queue-size"
-	suffixServerMaxPacketSize = "server-max-packet-size"
-	suffixServerHostPort      = "server-host-port"
+	suffixWorkers                = "workers"
+	suffixServerQueueSize        = "server-queue-size"
+	suffixServerMaxPacketSize    = "server-max-packet-size"
+	suffixServerSocketBufferSize = "server-socket-buffer-size"
+	suffixServerHostPort         = "server-host-port"
+	suffixWriteErrorsToDisk      = "errors-to-disk"
+
+	processorPrefixFmt = "processor.%s-%s."
+
 	// HTTPServerHostPort is the flag for HTTP endpoint
 	HTTPServerHostPort = "http-server.host-port"
 )
@@ -52,6 +57,7 @@ func AddFlags(flags *flag.FlagSet) {
 		flags.Int(prefix+suffixServerQueueSize, defaultQueueSize, "length of the queue for the UDP server")
 		flags.Int(prefix+suffixServerMaxPacketSize, defaultMaxPacketSize, "max packet size for the UDP server")
 		flags.String(prefix+suffixServerHostPort, ":"+strconv.Itoa(p.port), "host:port for the UDP server")
+		flags.Bool(prefix+suffixWriteErrorsToDisk, false, "Write undeserializable messages to disk")
 	}
 	AddOTELFlags(flags)
 }
@@ -70,6 +76,7 @@ func (b *Builder) InitFromViper(v *viper.Viper) *Builder {
 		prefix := fmt.Sprintf("processor.%s-%s.", processor.model, processor.protocol)
 		p := &ProcessorConfiguration{Model: processor.model, Protocol: processor.protocol}
 		p.Workers = v.GetInt(prefix + suffixWorkers)
+		p.ErrorsToDisk = v.GetBool(prefix + suffixWriteErrorsToDisk)
 		p.Server.QueueSize = v.GetInt(prefix + suffixServerQueueSize)
 		p.Server.MaxPacketSize = v.GetInt(prefix + suffixServerMaxPacketSize)
 		p.Server.HostPort = portNumToHostPort(v.GetString(prefix + suffixServerHostPort))
