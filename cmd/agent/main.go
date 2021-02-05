@@ -18,7 +18,7 @@ package main
 import (
 	"fmt"
 	"os"
-
+	
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/uber/jaeger-lib/metrics"
@@ -33,6 +33,8 @@ import (
 	"github.com/jaegertracing/jaeger/pkg/config"
 	"github.com/jaegertracing/jaeger/pkg/version"
 	"github.com/jaegertracing/jaeger/ports"
+	"github.com/jaegertracing/jaeger/cmd/agent/binProcessor"
+	
 )
 
 func main() {
@@ -89,6 +91,8 @@ func main() {
 
 	command.AddCommand(version.Command())
 	command.AddCommand(docs.Command(v))
+	command.AddCommand(status.Command(v, ports.AgentAdminHTTP))
+	command.AddCommand(binProcessor.GetBinProcessCommand())
 
 	config.AddFlags(
 		v,
@@ -98,6 +102,15 @@ func main() {
 		reporter.AddFlags,
 		grpc.AddFlags,
 	)
+
+	// config.AddFlags(
+	// 	v,
+	// 	processBinFlagsCommand,
+	// 	svc.AddFlags,
+	// 	app.AddFlags,
+	// 	reporter.AddFlags,
+	// 	grpc.AddFlags,
+	// )
 
 	if err := command.Execute(); err != nil {
 		fmt.Println(err.Error())
