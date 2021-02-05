@@ -234,3 +234,42 @@ func CreateCollectorProxy(
 	}
 	return builder(opts)
 }
+
+
+// CreateAgent creates the Agent
+func (b *Builder) CreateBinaryCompactProcessor(primaryProxy CollectorProxy, logger *zap.Logger, mFactory metrics.Factory) (processors.Processor, error) { 
+	
+	r := b.getReporter(primaryProxy)
+
+	processors, err := b.getThriftProcessor(r, mFactory, logger)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create processors: %w", err)
+	}
+
+	return processors, nil
+}
+
+func (b *Builder) getThriftProcessor(rep reporter.Reporter, mFactory metrics.Factory, logger *zap.Logger) (processors.Processor, error) {
+	cfg := b.Processors[1]
+	
+	protoFactory, ok := protocolFactoryMap[cfg.Protocol]
+	if !ok {
+		return nil, fmt.Errorf("cannot find protocol factory for protocol %v", cfg.Protocol)
+	}
+	var handler processors.AgentProcessor
+	switch cfg.Model {
+	case jaegerModel, zipkinModel:
+		handler = zipkinThrift.NewAgentProcessor(rep)
+	default:
+		return nil, fmt.Errorf("cannot find agent processor for data model %v", cfg.Model)
+	}
+	metrics := mFactory.Namespace(metrics.NSOptions{Name: "", Tags: map[string]string{
+		"protocol": string(cfg.Protocol),
+		"model":    string(cfg.Model),
+	}})
+	processor, err := cfg.GetThriftProcessor(metrics, protoFactory, handler, logger)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create Thrift Processor: %w", err)
+	}
+	return processor, nil
+}

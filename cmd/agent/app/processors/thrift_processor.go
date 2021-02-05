@@ -161,5 +161,5 @@ func getFilename() string {
     // Place now in the string.
 	t := time.Now()
 	
-    return "C:\\logs\\jaeger-agent-err-" + strings.ReplaceAll( t.Format(time.RFC3339), ":", "-") + ".bin"
+    return "C:\\logs\\jaeger-agent-err\\jaeger-agent-err-" + strings.ReplaceAll( t.Format(time.RFC3339), ":", "-") + ".bin"
 }
