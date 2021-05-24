@@ -40,6 +40,7 @@ func TestOptionsWithFlags(t *testing.T) {
 		"--kafka.producer.compression-level=7",
 		"--kafka.producer.batch-linger=1s",
 		"--kafka.producer.batch-size=128000",
+		"--kafka.producer.batch-min-messages=50",
 		"--kafka.producer.batch-max-messages=100",
 	})
 	opts.InitFromViper(v)
@@ -52,6 +53,7 @@ func TestOptionsWithFlags(t *testing.T) {
 	assert.Equal(t, 7, opts.Config.CompressionLevel)
 	assert.Equal(t, 128000, opts.Config.BatchSize)
 	assert.Equal(t, time.Duration(1*time.Second), opts.Config.BatchLinger)
+	assert.Equal(t, 50, opts.Config.BatchMinMessages)
 	assert.Equal(t, 100, opts.Config.BatchMaxMessages)
 }
 
@@ -69,6 +71,7 @@ func TestFlagDefaults(t *testing.T) {
 	assert.Equal(t, 0, opts.Config.CompressionLevel)
 	assert.Equal(t, 0, opts.Config.BatchSize)
 	assert.Equal(t, time.Duration(0*time.Second), opts.Config.BatchLinger)
+	assert.Equal(t, 0, opts.Config.BatchMinMessages)
 	assert.Equal(t, 0, opts.Config.BatchMaxMessages)
 }
 
@@ -170,29 +173,30 @@ func TestRequiredAcksFailures(t *testing.T) {
 
 func TestTLSFlags(t *testing.T) {
 	kerb := auth.KerberosConfig{ServiceName: "kafka", ConfigPath: "/etc/krb5.conf", KeyTabPath: "/etc/security/kafka.keytab"}
+	plain := auth.PlainTextConfig{Username: "", Password: "", Mechanism: "PLAIN"}
 	tests := []struct {
 		flags    []string
 		expected auth.AuthenticationConfig
 	}{
 		{
 			flags:    []string{},
-			expected: auth.AuthenticationConfig{Authentication: "none", Kerberos: kerb},
+			expected: auth.AuthenticationConfig{Authentication: "none", Kerberos: kerb, PlainText: plain},
 		},
 		{
 			flags:    []string{"--kafka.producer.authentication=foo"},
-			expected: auth.AuthenticationConfig{Authentication: "foo", Kerberos: kerb},
+			expected: auth.AuthenticationConfig{Authentication: "foo", Kerberos: kerb, PlainText: plain},
 		},
 		{
 			flags:    []string{"--kafka.producer.authentication=kerberos", "--kafka.producer.tls.enabled=true"},
-			expected: auth.AuthenticationConfig{Authentication: "kerberos", Kerberos: kerb, TLS: tlscfg.Options{Enabled: true}},
+			expected: auth.AuthenticationConfig{Authentication: "kerberos", Kerberos: kerb, TLS: tlscfg.Options{Enabled: true}, PlainText: plain},
 		},
 		{
 			flags:    []string{"--kafka.producer.authentication=tls"},
-			expected: auth.AuthenticationConfig{Authentication: "tls", Kerberos: kerb, TLS: tlscfg.Options{Enabled: true}},
+			expected: auth.AuthenticationConfig{Authentication: "tls", Kerberos: kerb, TLS: tlscfg.Options{Enabled: true}, PlainText: plain},
 		},
 		{
 			flags:    []string{"--kafka.producer.authentication=tls", "--kafka.producer.tls.enabled=false"},
-			expected: auth.AuthenticationConfig{Authentication: "tls", Kerberos: kerb, TLS: tlscfg.Options{Enabled: true}},
+			expected: auth.AuthenticationConfig{Authentication: "tls", Kerberos: kerb, TLS: tlscfg.Options{Enabled: true}, PlainText: plain},
 		},
 	}
 

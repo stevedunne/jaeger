@@ -40,6 +40,8 @@ import (
 	"github.com/jaegertracing/jaeger/storage/spanstore"
 )
 
+const defaultMaxDocCount = 10_000
+
 var exampleESSpan = []byte(
 	`{
 	   "traceID": "1",
@@ -101,6 +103,7 @@ func withSpanReader(fn func(r *spanReaderTest)) {
 			MaxSpanAge:        0,
 			IndexPrefix:       "",
 			TagDotReplacement: "@",
+			MaxDocCount:       defaultMaxDocCount,
 		}),
 	}
 	fn(r)
@@ -144,37 +147,79 @@ func TestSpanReaderIndices(t *testing.T) {
 	logger, _ := testutils.NewLogger()
 	metricsFactory := metricstest.NewFactory(0)
 	date := time.Date(2019, 10, 10, 5, 0, 0, 0, time.UTC)
-	dateFormat := date.UTC().Format("2006-01-02")
+	spanDataLayout := "2006-01-02-15"
+	serviceDataLayout := "2006-01-02"
+	spanDataLayoutFormat := date.UTC().Format(spanDataLayout)
+	serviceDataLayoutFormat := date.UTC().Format(serviceDataLayout)
+
 	testCases := []struct {
-		index  string
-		params SpanReaderParams
+		indices []string
+		params  SpanReaderParams
 	}{
 		{params: SpanReaderParams{Client: client, Logger: logger, MetricsFactory: metricsFactory,
-			IndexPrefix: "", Archive: false},
-			index: spanIndex + dateFormat},
+			IndexPrefix: "", Archive: false, SpanIndexDateLayout: spanDataLayout, ServiceIndexDateLayout: serviceDataLayout},
+			indices: []string{spanIndex + spanDataLayoutFormat, serviceIndex + serviceDataLayoutFormat}},
 		{params: SpanReaderParams{Client: client, Logger: logger, MetricsFactory: metricsFactory,
 			IndexPrefix: "", UseReadWriteAliases: true},
-			index: spanIndex + "read"},
+			indices: []string{spanIndex + "read", serviceIndex + "read"}},
 		{params: SpanReaderParams{Client: client, Logger: logger, MetricsFactory: metricsFactory,
-			IndexPrefix: "foo:", Archive: false},
-			index: "foo:" + indexPrefixSeparator + spanIndex + dateFormat},
+			IndexPrefix: "foo:", Archive: false, SpanIndexDateLayout: spanDataLayout, ServiceIndexDateLayout: serviceDataLayout},
+			indices: []string{"foo:" + indexPrefixSeparator + spanIndex + spanDataLayoutFormat, "foo:" + indexPrefixSeparator + serviceIndex + serviceDataLayoutFormat}},
 		{params: SpanReaderParams{Client: client, Logger: logger, MetricsFactory: metricsFactory,
 			IndexPrefix: "foo:", UseReadWriteAliases: true},
-			index: "foo:-" + spanIndex + "read"},
+			indices: []string{"foo:-" + spanIndex + "read", "foo:-" + serviceIndex + "read"}},
 		{params: SpanReaderParams{Client: client, Logger: logger, MetricsFactory: metricsFactory,
 			IndexPrefix: "", Archive: true},
-			index: spanIndex + archiveIndexSuffix},
+			indices: []string{spanIndex + archiveIndexSuffix, serviceIndex + archiveIndexSuffix}},
 		{params: SpanReaderParams{Client: client, Logger: logger, MetricsFactory: metricsFactory,
 			IndexPrefix: "foo:", Archive: true},
-			index: "foo:" + indexPrefixSeparator + spanIndex + archiveIndexSuffix},
+			indices: []string{"foo:" + indexPrefixSeparator + spanIndex + archiveIndexSuffix, "foo:" + indexPrefixSeparator + serviceIndex + archiveIndexSuffix}},
 		{params: SpanReaderParams{Client: client, Logger: logger, MetricsFactory: metricsFactory,
 			IndexPrefix: "foo:", Archive: true, UseReadWriteAliases: true},
-			index: "foo:" + indexPrefixSeparator + spanIndex + archiveReadIndexSuffix},
+			indices: []string{"foo:" + indexPrefixSeparator + spanIndex + archiveReadIndexSuffix, "foo:" + indexPrefixSeparator + serviceIndex + archiveReadIndexSuffix}},
+		{params: SpanReaderParams{Client: client, Logger: logger, MetricsFactory: metricsFactory,
+			IndexPrefix: "", Archive: false, RemoteReadClusters: []string{"cluster_one", "cluster_two"}, SpanIndexDateLayout: spanDataLayout, ServiceIndexDateLayout: serviceDataLayout},
+			indices: []string{
+				spanIndex + spanDataLayoutFormat,
+				"cluster_one:" + spanIndex + spanDataLayoutFormat,
+				"cluster_two:" + spanIndex + spanDataLayoutFormat,
+				serviceIndex + serviceDataLayoutFormat,
+				"cluster_one:" + serviceIndex + serviceDataLayoutFormat,
+				"cluster_two:" + serviceIndex + serviceDataLayoutFormat}},
+		{params: SpanReaderParams{Client: client, Logger: logger, MetricsFactory: metricsFactory,
+			IndexPrefix: "", Archive: true, RemoteReadClusters: []string{"cluster_one", "cluster_two"}},
+			indices: []string{
+				spanIndex + archiveIndexSuffix,
+				"cluster_one:" + spanIndex + archiveIndexSuffix,
+				"cluster_two:" + spanIndex + archiveIndexSuffix,
+				serviceIndex + archiveIndexSuffix,
+				"cluster_one:" + serviceIndex + archiveIndexSuffix,
+				"cluster_two:" + serviceIndex + archiveIndexSuffix}},
+		{params: SpanReaderParams{Client: client, Logger: logger, MetricsFactory: metricsFactory,
+			IndexPrefix: "", Archive: false, UseReadWriteAliases: true, RemoteReadClusters: []string{"cluster_one", "cluster_two"}},
+			indices: []string{
+				spanIndex + "read",
+				"cluster_one:" + spanIndex + "read",
+				"cluster_two:" + spanIndex + "read",
+				serviceIndex + "read",
+				"cluster_one:" + serviceIndex + "read",
+				"cluster_two:" + serviceIndex + "read"}},
+		{params: SpanReaderParams{Client: client, Logger: logger, MetricsFactory: metricsFactory,
+			IndexPrefix: "", Archive: true, UseReadWriteAliases: true, RemoteReadClusters: []string{"cluster_one", "cluster_two"}},
+			indices: []string{
+				spanIndex + archiveReadIndexSuffix,
+				"cluster_one:" + spanIndex + archiveReadIndexSuffix,
+				"cluster_two:" + spanIndex + archiveReadIndexSuffix,
+				serviceIndex + archiveReadIndexSuffix,
+				"cluster_one:" + serviceIndex + archiveReadIndexSuffix,
+				"cluster_two:" + serviceIndex + archiveReadIndexSuffix}},
 	}
 	for _, testCase := range testCases {
 		r := NewSpanReader(testCase.params)
-		actual := r.timeRangeIndices(r.spanIndexPrefix, date, date)
-		assert.Equal(t, []string{testCase.index}, actual)
+
+		actualSpan := r.timeRangeIndices(r.spanIndexPrefix, r.spanIndexDateLayout, date, date, -1*time.Hour)
+		actualService := r.timeRangeIndices(r.serviceIndexPrefix, r.serviceIndexDateLayout, date, date, -24*time.Hour)
+		assert.Equal(t, testCase.indices, append(actualSpan, actualService...))
 	}
 }
 
@@ -216,15 +261,17 @@ func TestSpanReader_multiRead_followUp_query(t *testing.T) {
 		spanBytesID2, err := json.Marshal(spanID2)
 		require.NoError(t, err)
 
-		id1Query := elastic.NewBoolQuery().Should(
+		traceID1Query := elastic.NewBoolQuery().Should(
 			elastic.NewTermQuery(traceIDField, model.TraceID{High: 0, Low: 1}.String()).Boost(2),
 			elastic.NewTermQuery(traceIDField, fmt.Sprintf("%x", 1)))
+		id1Query := elastic.NewBoolQuery().Must(traceID1Query)
 		id1Search := elastic.NewSearchRequest().
 			IgnoreUnavailable(true).
 			Source(r.reader.sourceFn(id1Query, model.TimeAsEpochMicroseconds(date.Add(-time.Hour))))
-		id2Query := elastic.NewBoolQuery().Should(
+		traceID2Query := elastic.NewBoolQuery().Should(
 			elastic.NewTermQuery(traceIDField, model.TraceID{High: 0, Low: 2}.String()).Boost(2),
 			elastic.NewTermQuery(traceIDField, fmt.Sprintf("%x", 2)))
+		id2Query := elastic.NewBoolQuery().Must(traceID2Query)
 		id2Search := elastic.NewSearchRequest().
 			IgnoreUnavailable(true).
 			Source(r.reader.sourceFn(id2Query, model.TimeAsEpochMicroseconds(date.Add(-time.Hour))))
@@ -432,6 +479,7 @@ func TestSpanReaderFindIndices(t *testing.T) {
 	today := time.Date(1995, time.April, 21, 4, 12, 19, 95, time.UTC)
 	yesterday := today.AddDate(0, 0, -1)
 	twoDaysAgo := today.AddDate(0, 0, -2)
+	dateLayout := "2006-01-02"
 
 	testCases := []struct {
 		startTime time.Time
@@ -442,30 +490,30 @@ func TestSpanReaderFindIndices(t *testing.T) {
 			startTime: today.Add(-time.Millisecond),
 			endTime:   today,
 			expected: []string{
-				indexWithDate(spanIndex, today),
+				indexWithDate(spanIndex, dateLayout, today),
 			},
 		},
 		{
 			startTime: today.Add(-13 * time.Hour),
 			endTime:   today,
 			expected: []string{
-				indexWithDate(spanIndex, today),
-				indexWithDate(spanIndex, yesterday),
+				indexWithDate(spanIndex, dateLayout, today),
+				indexWithDate(spanIndex, dateLayout, yesterday),
 			},
 		},
 		{
 			startTime: today.Add(-48 * time.Hour),
 			endTime:   today,
 			expected: []string{
-				indexWithDate(spanIndex, today),
-				indexWithDate(spanIndex, yesterday),
-				indexWithDate(spanIndex, twoDaysAgo),
+				indexWithDate(spanIndex, dateLayout, today),
+				indexWithDate(spanIndex, dateLayout, yesterday),
+				indexWithDate(spanIndex, dateLayout, twoDaysAgo),
 			},
 		},
 	}
 	withSpanReader(func(r *spanReaderTest) {
 		for _, testCase := range testCases {
-			actual := r.reader.timeRangeIndices(spanIndex, testCase.startTime, testCase.endTime)
+			actual := r.reader.timeRangeIndices(spanIndex, dateLayout, testCase.startTime, testCase.endTime, -24*time.Hour)
 			assert.EqualValues(t, testCase.expected, actual)
 		}
 	})
@@ -473,7 +521,7 @@ func TestSpanReaderFindIndices(t *testing.T) {
 
 func TestSpanReader_indexWithDate(t *testing.T) {
 	withSpanReader(func(r *spanReaderTest) {
-		actual := indexWithDate(spanIndex, time.Date(1995, time.April, 21, 4, 21, 19, 95, time.UTC))
+		actual := indexWithDate(spanIndex, "2006-01-02", time.Date(1995, time.April, 21, 4, 21, 19, 95, time.UTC))
 		assert.Equal(t, "jaeger-span-1995-04-21", actual)
 	})
 }
@@ -804,7 +852,18 @@ func TestSpanReader_FindTracesSpanCollectionFailure(t *testing.T) {
 }
 
 func TestFindTraceIDs(t *testing.T) {
-	testGet(traceIDAggregation, t)
+	testCases := []struct {
+		aggregrationID string
+	}{
+		{traceIDAggregation},
+		{servicesAggregation},
+		{operationsAggregation},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.aggregrationID, func(t *testing.T) {
+			testGet(testCase.aggregrationID, t)
+		})
+	}
 }
 
 func TestTraceIDsStringsToModelsConversion(t *testing.T) {
@@ -835,15 +894,23 @@ func mockArchiveMultiSearchService(r *spanReaderTest, indexName string) *mock.Ca
 	return multiSearchService.On("Do", mock.AnythingOfType("*context.valueCtx"))
 }
 
+// matchTermsAggregation uses reflection to match the size attribute of the TermsAggregation; neither
+// attributes nor getters are exported by TermsAggregation.
+func matchTermsAggregation(termsAgg *elastic.TermsAggregation) bool {
+	val := reflect.ValueOf(termsAgg).Elem()
+	sizeVal := val.FieldByName("size").Elem().Int()
+	return sizeVal == defaultMaxDocCount
+}
+
 func mockSearchService(r *spanReaderTest) *mock.Call {
 	searchService := &mocks.SearchService{}
 	searchService.On("Query", mock.Anything).Return(searchService)
 	searchService.On("IgnoreUnavailable", mock.AnythingOfType("bool")).Return(searchService)
-	searchService.On("Size", mock.MatchedBy(func(i int) bool {
-		return i == 0 || i == defaultDocCount
+	searchService.On("Size", mock.MatchedBy(func(size int) bool {
+		return size == 0 // Aggregations apply size (bucket) limits in their own query objects, and do not apply at the parent query level.
 	})).Return(searchService)
-	searchService.On("Aggregation", stringMatcher(servicesAggregation), mock.AnythingOfType("*elastic.TermsAggregation")).Return(searchService)
-	searchService.On("Aggregation", stringMatcher(operationsAggregation), mock.AnythingOfType("*elastic.TermsAggregation")).Return(searchService)
+	searchService.On("Aggregation", stringMatcher(servicesAggregation), mock.MatchedBy(matchTermsAggregation)).Return(searchService)
+	searchService.On("Aggregation", stringMatcher(operationsAggregation), mock.MatchedBy(matchTermsAggregation)).Return(searchService)
 	searchService.On("Aggregation", stringMatcher(traceIDAggregation), mock.AnythingOfType("*elastic.TermsAggregation")).Return(searchService)
 	r.client.On("Search", mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(searchService)
 	return searchService.On("Do", mock.MatchedBy(func(ctx context.Context) bool {
@@ -973,7 +1040,7 @@ func TestSpanReader_buildDurationQuery(t *testing.T) {
 func TestSpanReader_buildStartTimeQuery(t *testing.T) {
 	expectedStr :=
 		`{ "range":
-			{ "startTime": { "include_lower": true,
+			{ "startTimeMillis": { "include_lower": true,
 				         "include_upper": true,
 				         "from": 1000000,
 				         "to": 2000000 }
@@ -989,8 +1056,8 @@ func TestSpanReader_buildStartTimeQuery(t *testing.T) {
 		expected := make(map[string]interface{})
 		json.Unmarshal([]byte(expectedStr), &expected)
 		// We need to do this because we cannot process a json into uint64.
-		expected["range"].(map[string]interface{})["startTime"].(map[string]interface{})["from"] = model.TimeAsEpochMicroseconds(startTimeMin)
-		expected["range"].(map[string]interface{})["startTime"].(map[string]interface{})["to"] = model.TimeAsEpochMicroseconds(startTimeMax)
+		expected["range"].(map[string]interface{})["startTimeMillis"].(map[string]interface{})["from"] = model.TimeAsEpochMicroseconds(startTimeMin) / 1000
+		expected["range"].(map[string]interface{})["startTimeMillis"].(map[string]interface{})["to"] = model.TimeAsEpochMicroseconds(startTimeMax) / 1000
 
 		assert.EqualValues(t, expected, actual)
 	})

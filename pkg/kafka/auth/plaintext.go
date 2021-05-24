@@ -23,15 +23,49 @@ import (
 	"github.com/xdg/scram"
 )
 
-// PlainTextConfig describes the configuration properties needed for SASL/PLAIN with kafka
-type PlainTextConfig struct {
-	UserName string `mapstructure:"username"`
-	Password string `mapstructure:"password" json:"-"`
+// scramClient is the client to use when the auth mechanism is SCRAM
+type scramClient struct {
+	*scram.Client
+	*scram.ClientConversation
+	scram.HashGeneratorFcn
 }
 
-func setPlainTextConfiguration(config *PlainTextConfig, saramaConfig *sarama.Config) {
+// Begin prepares the client for the SCRAM exchange
+// with the server with a user name and a password
+func (x *scramClient) Begin(userName, password, authzID string) (err error) {
+	x.Client, err = x.HashGeneratorFcn.NewClient(userName, password, authzID)
+	if err != nil {
+		return err
+	}
+	x.ClientConversation = x.Client.NewConversation()
+	return nil
+}
+
+// Step steps client through the SCRAM exchange. It is
+// called repeatedly until it errors or `Done` returns true.
+func (x *scramClient) Step(challenge string) (response string, err error) {
+	response, err = x.ClientConversation.Step(challenge)
+	return
+}
+
+// Done should return true when the SCRAM conversation
+// is over.
+func (x *scramClient) Done() bool {
+	return x.ClientConversation.Done()
+}
+
+// PlainTextConfig describes the configuration properties needed for SASL/PLAIN with kafka
+type PlainTextConfig struct {
+	Username  string `mapstructure:"username"`
+	Password  string `mapstructure:"password" json:"-"`
+	Mechanism string `mapstructure:"mechanism"`
+}
+
+var _ sarama.SCRAMClient = (*scramClient)(nil)
+
+func setPlainTextConfiguration(config *PlainTextConfig, saramaConfig *sarama.Config) error {
 	saramaConfig.Net.SASL.Enable = true
-	saramaConfig.Net.SASL.User = config.UserName
+	saramaConfig.Net.SASL.User = config.Username
 	saramaConfig.Net.SASL.Password = config.Password
 	saramaConfig.Net.SASL.Handshake = false
 	saramaConfig.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &SClient{HashGeneratorFcn: SHA256} }

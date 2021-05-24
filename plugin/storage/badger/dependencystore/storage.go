@@ -22,7 +22,7 @@ import (
 	"github.com/jaegertracing/jaeger/storage/spanstore"
 )
 
-// DependencyStore handles all queries and insertions to Cassandra dependencies
+// DependencyStore handles all queries and insertions to Badger dependencies
 type DependencyStore struct {
 	reader spanstore.Reader
 }
@@ -35,7 +35,7 @@ func NewDependencyStore(store spanstore.Reader) *DependencyStore {
 }
 
 // GetDependencies returns all interservice dependencies, implements DependencyReader
-func (s *DependencyStore) GetDependencies(endTs time.Time, lookback time.Duration) ([]model.DependencyLink, error) {
+func (s *DependencyStore) GetDependencies(ctx context.Context, endTs time.Time, lookback time.Duration) ([]model.DependencyLink, error) {
 	deps := map[string]*model.DependencyLink{}
 
 	params := &spanstore.TraceQueryParameters{

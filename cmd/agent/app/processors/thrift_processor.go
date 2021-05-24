@@ -16,12 +16,13 @@
 package processors
 
 import (
+	"context"
 	"fmt"
-	"sync"
 	"os"
-	"time"
 	"strings"
-	
+	"sync"
+	"time"
+
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/uber/jaeger-lib/metrics"
 	"go.uber.org/zap"
@@ -45,7 +46,7 @@ type ThriftProcessor struct {
 		// Number of failed buffer process operations
 		HandlerProcessError metrics.Counter `metric:"thrift.udp.t-processor.handler-errors"`
 	}
-	errorsToDisk  bool
+	errorsToDisk bool
 }
 
 // AgentProcessor handler used by the processor to process thrift and call the reporter
@@ -53,7 +54,7 @@ type ThriftProcessor struct {
 // code, e.g. jaegerThrift.NewAgentProcessor(handler), where handler implements the Agent
 // Thrift service interface, which is invoked with the deserialized struct.
 type AgentProcessor interface {
-	Process(iprot, oprot thrift.TProtocol) (success bool, err thrift.TException)
+	Process(ctx context.Context, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException)
 }
 
 // NewThriftProcessor creates a TBufferedServer backed ThriftProcessor
@@ -64,7 +65,7 @@ func NewThriftProcessor(
 	factory thrift.TProtocolFactory,
 	handler AgentProcessor,
 	logger *zap.Logger,
-	errorsToDisk  bool,
+	errorsToDisk bool,
 ) (*ThriftProcessor, error) {
 	if numProcessors <= 0 {
 		return nil, fmt.Errorf(
@@ -125,9 +126,6 @@ func (s *ThriftProcessor) processBuffer() {
 		s.logger.Debug("Span(s) received by the agent", zap.Int("bytes-received", len(payload)))
 
 		if ok, err := s.handler.Process(context.Background(), protocol, protocol); !ok {
-			if(s.errorsToDisk){
-				dumpBinDataToFile(payload, s)
-			}
 			s.logger.Error("Processor failed", zap.Error(err))
 			s.metrics.HandlerProcessError.Inc(1)
 		}
@@ -136,30 +134,30 @@ func (s *ThriftProcessor) processBuffer() {
 	}
 }
 
-func showMessage(payload []byte, s *ThriftProcessor){
-	strPayload := string(payload) 
-	s.logger.Debug( fmt.Sprintf("Payload Contents %s", strPayload))
+func showMessage(payload []byte, s *ThriftProcessor) {
+	strPayload := string(payload)
+	s.logger.Debug(fmt.Sprintf("Payload Contents %s", strPayload))
 }
 
-func dumpBinDataToFile(payload []byte, s *ThriftProcessor){
-	file, err  := os.Create(  getFilename() )
+func dumpBinDataToFile(payload []byte, s *ThriftProcessor) {
+	file, err := os.Create(getFilename())
 	defer file.Close()
 	if err != nil {
-		s.logger.Debug( fmt.Sprintf("Failed to create binary data file %v+", err))
+		s.logger.Debug(fmt.Sprintf("Failed to create binary data file %v+", err))
 	}
-	
+
 	_, err = file.Write(payload)
 
 	if err != nil {
-		s.logger.Debug( fmt.Sprintf("Failed to write binary data to file %v+", err))
+		s.logger.Debug(fmt.Sprintf("Failed to write binary data to file %v+", err))
 	}
 }
 
 func getFilename() string {
-    // Use layout string for time format.
-    const layout = "yyyy-MM-dd_hhmmss"
-    // Place now in the string.
+	// Use layout string for time format.
+	const layout = "yyyy-MM-dd_hhmmss"
+	// Place now in the string.
 	t := time.Now()
-	
-    return "C:\\logs\\jaeger-agent-err\\jaeger-agent-err-" + strings.ReplaceAll( t.Format(time.RFC3339), ":", "-") + ".bin"
+
+	return "C:\\logs\\jaeger-agent-err\\jaeger-agent-err-" + strings.ReplaceAll(t.Format(time.RFC3339), ":", "-") + ".bin"
 }
