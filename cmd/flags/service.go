@@ -92,6 +92,7 @@ func (s *Service) Start(v *viper.Viper) error {
 
 	sFlags := new(SharedFlags).InitFromViper(v)
 	newProdConfig := zap.NewProductionConfig()
+	newProdConfig.OutputPaths = []string{"stdout"}
 	newProdConfig.Sampling = nil
 	if logger, err := sFlags.NewLogger(newProdConfig); err == nil {
 		s.Logger = logger
