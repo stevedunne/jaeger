@@ -30,7 +30,7 @@ type Marshaller interface {
 
 type protobufMarshaller struct{}
 
-func newProtobufMarshaller() *protobufMarshaller {
+func NewProtobufMarshaller() *protobufMarshaller {
 	return &protobufMarshaller{}
 }
 
@@ -43,7 +43,7 @@ type jsonMarshaller struct {
 	pbMarshaller *jsonpb.Marshaler
 }
 
-func newJSONMarshaller() *jsonMarshaller {
+func NewJSONMarshaller() *jsonMarshaller {
 	return &jsonMarshaller{&jsonpb.Marshaler{}}
 }
 
