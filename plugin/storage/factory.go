@@ -32,6 +32,7 @@ import (
 	"github.com/jaegertracing/jaeger/plugin/storage/grpc"
 	"github.com/jaegertracing/jaeger/plugin/storage/kafka"
 	"github.com/jaegertracing/jaeger/plugin/storage/memory"
+	"github.com/jaegertracing/jaeger/plugin/storage/nsq"
 	"github.com/jaegertracing/jaeger/storage"
 	"github.com/jaegertracing/jaeger/storage/dependencystore"
 	"github.com/jaegertracing/jaeger/storage/spanstore"
@@ -44,6 +45,7 @@ const (
 	kafkaStorageType         = "kafka"
 	grpcPluginStorageType    = "grpc-plugin"
 	badgerStorageType        = "badger"
+	nsqStorageType           = "nsq"
 	downsamplingRatio        = "downsampling.ratio"
 	downsamplingHashSalt     = "downsampling.hashsalt"
 	spanStorageType          = "span-storage-type"
@@ -100,6 +102,8 @@ func (f *Factory) getFactoryOfType(factoryType string) (storage.Factory, error) 
 		return badger.NewFactory(), nil
 	case grpcPluginStorageType:
 		return grpc.NewFactory(), nil
+	case nsqStorageType:
+		return nsq.NewFactory(), nil
 	default:
 		return nil, fmt.Errorf("unknown storage type %s. Valid types are %v", factoryType, AllStorageTypes)
 	}
