@@ -36,6 +36,7 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mjibson/esc v0.2.0
+	github.com/nsqio/go-nsq v1.0.8 // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/olivere/elastic v6.2.35+incompatible
 	github.com/opentracing-contrib/go-grpc v0.0.0-20191001143057-db30781987df
