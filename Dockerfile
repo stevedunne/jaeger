@@ -1,4 +1,4 @@
-FROM golang:alpine
+FROM golang:alpine AS builder
 
 # Set necessary environmet variables needed for our image
 ENV GO111MODULE=on \
@@ -27,6 +27,11 @@ WORKDIR /dist
 
 # Copy binary from build to main folder
 RUN cp /build/cmd/agent/jaeger-agent .
+
+# Build a small image
+FROM scratch
+
+COPY --from=builder /dist/jaeger-agent /
 
 # Export necessary port
 EXPOSE 6831
