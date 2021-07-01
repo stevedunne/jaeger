@@ -17,6 +17,7 @@ package app
 
 import (
 	"os"
+	"strings"
 
 	"github.com/uber/jaeger-lib/metrics"
 	"go.uber.org/zap"
@@ -73,7 +74,22 @@ func (b *SpanHandlerBuilder) BuildHandlers(spanProcessor processor.SpanProcessor
 	}
 }
 
-func defaultSpanFilter(*model.Span) bool {
+func defaultSpanFilter(span *model.Span) bool {
+
+
+	for i, v := range span.Tags {
+		if strings.ToLower(v.Key) == "http.url" {
+			if strings.HasSuffix(span.Tags[i].VStr, "ping") ||
+				strings.HasSuffix(span.Tags[i].VStr, "health") ||
+				strings.HasSuffix(span.Tags[i].VStr, "hc") ||
+				strings.Contains(span.Tags[i].VStr, ".newrelic.") {
+				return false
+
+//				strings.HasSuffix(span.Tags[i].VStr, "heartbeat") ||
+			}
+		}
+	}
+
 	return true
 }
 
