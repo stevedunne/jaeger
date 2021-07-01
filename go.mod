@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/HdrHistogram/hdrhistogram-go v0.9.0 // indirect
 	github.com/Shopify/sarama v1.29.0
+	github.com/aiven/tchannel-go v1.19.0 // indirect
 	github.com/apache/thrift v0.14.1
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/bsm/sarama-cluster v2.1.13+incompatible
@@ -46,6 +47,7 @@ require (
 	github.com/prometheus/common v0.10.0 // indirect
 	github.com/prometheus/procfs v0.1.3 // indirect
 	github.com/rs/cors v1.7.0
+	github.com/samuel/go-thrift v0.0.0-20191111193933-5165175b40af // indirect
 	github.com/securego/gosec v0.0.0-20200203094520-d13bb6d2420c
 	github.com/soheilhy/cmux v0.1.5
 	github.com/spf13/afero v1.2.2 // indirect
