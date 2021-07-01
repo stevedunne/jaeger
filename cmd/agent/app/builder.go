@@ -57,8 +57,8 @@ type Protocol string
 
 var (
 	protocolFactoryMap = map[Protocol]thrift.TProtocolFactory{
-		compactProtocol: thrift.NewTCompactProtocolFactoryConf(&thrift.TConfiguration{}),
-		binaryProtocol:  thrift.NewTBinaryProtocolFactoryConf(&thrift.TConfiguration{}),
+		compactProtocol: thrift.NewTCompactProtocolFactoryConf(&thrift.TConfiguration{MaxMessageSize: 250 * 1024}),
+		binaryProtocol:  thrift.NewTBinaryProtocolFactoryConf(&thrift.TConfiguration{MaxMessageSize: 250 * 1024}),
 	}
 )
 
