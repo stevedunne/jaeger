@@ -76,16 +76,17 @@ func (b *SpanHandlerBuilder) BuildHandlers(spanProcessor processor.SpanProcessor
 
 func defaultSpanFilter(span *model.Span) bool {
 
-
-	for i, v := range span.Tags {
-		if strings.ToLower(v.Key) == "http.url" {
-			if strings.HasSuffix(span.Tags[i].VStr, "ping") ||
-				strings.HasSuffix(span.Tags[i].VStr, "health") ||
-				strings.HasSuffix(span.Tags[i].VStr, "hc") ||
-				strings.Contains(span.Tags[i].VStr, ".newrelic.") {
-				return false
-
-//				strings.HasSuffix(span.Tags[i].VStr, "heartbeat") ||
+	if span != nil {
+		for i, v := range span.Tags {
+			if strings.ToLower(v.Key) == "http.url" {
+				lstr := strings.ToLower(span.Tags[i].VStr)
+				if strings.HasSuffix(lstr, "ping") ||
+					strings.HasSuffix(lstr, "health") ||
+					strings.HasSuffix(lstr, "hc") ||
+					strings.Contains(lstr, ".newrelic.") {
+					return false
+					// strings.HasSuffix(span.Tags[i].VStr, "heartbeat") ||
+				}
 			}
 		}
 	}

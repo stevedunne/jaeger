@@ -204,6 +204,7 @@ func (sp *spanProcessor) enqueueSpan(span *model.Span, originalFormat processor.
 
 	if !sp.filterSpan(span) {
 		spanCounts.RejectedBySvc.ReportServiceNameForSpan(span)
+		sp.logger.Debug("Span removed by filter", zap.Any("span", span))
 		return true // as in "not dropped", because it's actively rejected
 	}
 
