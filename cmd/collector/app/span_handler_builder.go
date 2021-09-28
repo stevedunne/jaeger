@@ -16,6 +16,7 @@
 package app
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/uber/jaeger-lib/metrics"
@@ -48,19 +49,22 @@ func (b *SpanHandlerBuilder) BuildSpanProcessor(additional ...ProcessSpan) proce
 	hostname, _ := os.Hostname()
 	svcMetrics := b.metricsFactory()
 	hostMetrics := svcMetrics.Namespace(metrics.NSOptions{Tags: map[string]string{"host": hostname}})
+	logger := b.logger()
+	preprocessor := &Preprocessor{Logger: logger}
 
 	return NewSpanProcessor(
 		b.SpanWriter,
 		additional,
 		Options.ServiceMetrics(svcMetrics),
 		Options.HostMetrics(hostMetrics),
-		Options.Logger(b.logger()),
+		Options.Logger(logger),
 		Options.SpanFilter(defaultSpanFilter),
 		Options.NumWorkers(b.CollectorOpts.NumWorkers),
 		Options.QueueSize(b.CollectorOpts.QueueSize),
 		Options.CollectorTags(b.CollectorOpts.CollectorTags),
 		Options.DynQueueSizeWarmup(uint(b.CollectorOpts.QueueSize)), // same as queue size for now
 		Options.DynQueueSizeMemory(b.CollectorOpts.DynQueueSizeMemory),
+		Options.PreProcessSpans(preprocessor.ProcessSpans),
 	)
 }
 
@@ -89,4 +93,20 @@ func (b *SpanHandlerBuilder) metricsFactory() metrics.Factory {
 		return metrics.NullFactory
 	}
 	return b.MetricsFactory
+}
+
+type Preprocessor struct {
+	Logger *zap.Logger
+}
+
+func (f *Preprocessor) ProcessSpans(spans []*model.Span) {
+	// Only for a transient data gathering test
+	// please dont use this ever
+	for _, s := range spans {
+		if s.Duration < 0 {
+			s.Duration *= -1
+			f.Logger.Debug(fmt.Sprintf("Corrected negative duration for %s %s", s.TraceID.String(), s.SpanID.String()))
+			s.Tags = append(s.Tags, model.KeyValue{Key: "duration-adjusted", VStr: fmt.Sprintf("%v", s.Duration)})
+		}
+	}
 }

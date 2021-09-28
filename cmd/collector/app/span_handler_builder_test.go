@@ -17,6 +17,7 @@ package app
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,6 +25,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/jaegertracing/jaeger/cmd/flags"
+	"github.com/jaegertracing/jaeger/model"
 	"github.com/jaegertracing/jaeger/pkg/config"
 	"github.com/jaegertracing/jaeger/plugin/storage/memory"
 )
@@ -60,4 +62,28 @@ func TestNewSpanHandlerBuilder(t *testing.T) {
 
 func TestDefaultSpanFilter(t *testing.T) {
 	assert.True(t, defaultSpanFilter(nil))
+}
+
+func TestPreProcessor_UpdatesInvalidDurations(t *testing.T) {
+	preprocessor := &Preprocessor{Logger: zap.NewNop()}
+	spans := []*model.Span{
+		{Duration: 0, Tags: []model.KeyValue{}},
+		{Duration: 10000, Tags: []model.KeyValue{}},
+		{Duration: -5000, Tags: []model.KeyValue{}},
+		{Duration: -1, Tags: []model.KeyValue{}},
+	}
+
+	preprocessor.ProcessSpans(spans)
+
+	assert.Equal(t, time.Duration(0), spans[0].Duration)
+	assert.Equal(t, 0, len(spans[0].Tags))
+
+	assert.Equal(t, time.Duration(10000), spans[1].Duration)
+	assert.Equal(t, 0, len(spans[1].Tags))
+
+	assert.Equal(t, time.Duration(5000), spans[2].Duration)
+	assert.Equal(t, 1, len(spans[2].Tags))
+
+	assert.Equal(t, time.Duration(1), spans[3].Duration)
+	assert.Equal(t, 1, len(spans[3].Tags))
 }
