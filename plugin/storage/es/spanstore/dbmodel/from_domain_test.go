@@ -156,3 +156,16 @@ func TestConvertKeyValueValue(t *testing.T) {
 		})
 	}
 }
+
+func TestShowNegativeDurationConversion(t *testing.T) {
+
+	span := &model.Span{
+		Duration: -5000,
+		Process:  &model.Process{ServiceName: "Test"},
+	}
+	converter := NewFromDomain(false, nil, ":")
+
+	embeddedSpan := converter.FromDomainEmbedProcess(span)
+
+	assert.Equal(t, 5000, embeddedSpan.Duration, fmt.Sprintf("Duration converted to %v", embeddedSpan.Duration))
+}
