@@ -40,15 +40,23 @@ import (
 
 const (
 	cassandraStorageType     = "cassandra"
+	opensearchStorageType    = "opensearch"
 	elasticsearchStorageType = "elasticsearch"
 	memoryStorageType        = "memory"
 	kafkaStorageType         = "kafka"
 	grpcPluginStorageType    = "grpc-plugin"
 	badgerStorageType        = "badger"
+<<<<<<< HEAD
 	nsqStorageType           = "nsq"
 	downsamplingRatio        = "downsampling.ratio"
 	downsamplingHashSalt     = "downsampling.hashsalt"
 	spanStorageType          = "span-storage-type"
+=======
+
+	downsamplingRatio    = "downsampling.ratio"
+	downsamplingHashSalt = "downsampling.hashsalt"
+	spanStorageType      = "span-storage-type"
+>>>>>>> 5a301361e8bbe595829145112b5f6cdea400758d
 
 	// defaultDownsamplingRatio is the default downsampling ratio.
 	defaultDownsamplingRatio = 1.0
@@ -57,7 +65,7 @@ const (
 )
 
 // AllStorageTypes defines all available storage backends
-var AllStorageTypes = []string{cassandraStorageType, elasticsearchStorageType, memoryStorageType, kafkaStorageType, badgerStorageType, grpcPluginStorageType}
+var AllStorageTypes = []string{cassandraStorageType, opensearchStorageType, elasticsearchStorageType, memoryStorageType, kafkaStorageType, badgerStorageType, grpcPluginStorageType}
 
 // Factory implements storage.Factory interface as a meta-factory for storage components.
 type Factory struct {
@@ -92,7 +100,7 @@ func (f *Factory) getFactoryOfType(factoryType string) (storage.Factory, error) 
 	switch factoryType {
 	case cassandraStorageType:
 		return cassandra.NewFactory(), nil
-	case elasticsearchStorageType:
+	case elasticsearchStorageType, opensearchStorageType:
 		return es.NewFactory(), nil
 	case memoryStorageType:
 		return memory.NewFactory(), nil
@@ -160,6 +168,20 @@ func (f *Factory) CreateSpanWriter() (spanstore.Writer, error) {
 		HashSalt:       f.DownsamplingHashSalt,
 		MetricsFactory: f.metricsFactory.Namespace(metrics.NSOptions{Name: "downsampling_writer"}),
 	}), nil
+}
+
+// CreateSamplingStoreFactory creates a distributedlock.Lock and samplingstore.Store for use with adaptive sampling
+func (f *Factory) CreateSamplingStoreFactory() (storage.SamplingStoreFactory, error) {
+	for _, factory := range f.factories {
+		ss, ok := factory.(storage.SamplingStoreFactory)
+		if ok {
+			return ss, nil
+		}
+	}
+
+	// returning nothing is valid here. it's quite possible that the user has no backend that can support adaptive sampling
+	// this is fine as long as adaptive sampling is also not configured
+	return nil, nil
 }
 
 // CreateDependencyReader implements storage.Factory

@@ -1,7 +1,51 @@
 Changes by Version
 ==================
 
-Unreleased
+next release
+-------------------
+### Backend Changes
+#### New Features
+* Add support for adaptive sampling with a Cassandra backend. ([#2966](https://github.com/jaegertracing/jaeger/pull/2966), [@joe-elliott](https://github.com/joe-elliott))
+
+
+1.26.0 (2021-09-06)
+-------------------
+### Backend Changes
+#### New Features
+* Add cassandra v4 support ([@Ashmita152](https://github.com/Ashmita152) in [#3225](https://github.com/jaegertracing/jaeger/pull/3225))
+* Add es-index-cleaner golang implementation ([@pavolloffay](https://github.com/pavolloffay) in [#3204](https://github.com/jaegertracing/jaeger/pull/3204))
+* Add CLI Option for gRPC Max Receive Message Size ([@js8080](https://github.com/js8080) in [#3214](https://github.com/jaegertracing/jaeger/pull/3214) and [#3192](https://github.com/jaegertracing/jaeger/pull/3192))
+* Automatically detect OpenSearch version ([@pavolloffay](https://github.com/pavolloffay) in [#3198](https://github.com/jaegertracing/jaeger/pull/3198))
+* Add SendGetBodyAs on elasticsearch ([@NatMarchand](https://github.com/NatMarchand) in [#3193](https://github.com/jaegertracing/jaeger/pull/3193))
+* Set lookback in ES rollover to distant past ([@pavolloffay](https://github.com/pavolloffay) in [#3169](https://github.com/jaegertracing/jaeger/pull/3169))
+
+#### Bug fixes, Minor Improvements
+* Check for invalid --agent.tags ([@esnible](https://github.com/esnible) in [#3246](https://github.com/jaegertracing/jaeger/pull/3246))
+* Replace old linters with golangci-lint ([@albertteoh](https://github.com/albertteoh) in [#3237](https://github.com/jaegertracing/jaeger/pull/3237))
+* Fix panic on empty findTraces query ([@akuzni2](https://github.com/akuzni2) in [#3232](https://github.com/jaegertracing/jaeger/pull/3232))
+* Upgrade to Go v1.17 ([@Ashmita152](https://github.com/Ashmita152) in [#3220](https://github.com/jaegertracing/jaeger/pull/3220))
+* Add docker buildx make target ([@pavolloffay](https://github.com/pavolloffay) in [#3213](https://github.com/jaegertracing/jaeger/pull/3213))
+* Fix the name for elasticsearch integration tests ([@Ashmita152](https://github.com/Ashmita152) in [#3208](https://github.com/jaegertracing/jaeger/pull/3208))
+* Upgrade ES images in integration tests ([@pavolloffay](https://github.com/pavolloffay) in [#3185](https://github.com/jaegertracing/jaeger/pull/3185))
+
+### UI Changes
+* UI pinned to version 1.16.0 - https://github.com/jaegertracing/jaeger-ui/releases/tag/v1.16.0
+
+1.25.0 (2021-08-04)
+-------------------
+#### New Features
+* Add query service with OTLP ([#3086](https://github.com/jaegertracing/jaeger/pull/3086), [@pavolloffay](https://github.com/pavolloffay))
+* Add ppc64le support on multiarch docker images ([#3160](https://github.com/jaegertracing/jaeger/pull/3160), [@krishvoor](https://github.com/krishvoor))
+
+#### Bug fixes, Minor Improvements
+* Fix base path in grpc gateway for api_v3 ([#3139](https://github.com/jaegertracing/jaeger/pull/3139), [@pavolloffay](https://github.com/pavolloffay))
+* Add /api prefix for /v3 API ([#3178](https://github.com/jaegertracing/jaeger/pull/3178), [@pavolloffay](https://github.com/pavolloffay))
+* Define `http.Server.ErrorLog` to forward logs to Zap ([#3157](https://github.com/jaegertracing/jaeger/pull/3157), [@yurishkuro](https://github.com/yurishkuro))
+* Add ATM dev environment docker-compose and API doc ([#3171](https://github.com/jaegertracing/jaeger/pull/3171), [@albertteoh](https://github.com/albertteoh))
+* Log the source of sampling strategies ([#3166](https://github.com/jaegertracing/jaeger/pull/3166), [@yurishkuro](https://github.com/yurishkuro))
+* Pin elasticsearch-py to older version without elastic.co product check ([#3180](https://github.com/jaegertracing/jaeger/pull/3180), [@pavolloffay](https://github.com/pavolloffay))
+
+1.24.0 (2021-07-07)
 -------------------
 ### Backend Changes
 
@@ -11,9 +55,29 @@ Unreleased
   * Deprecated `--badger.truncate` flag.
   * All badger related expvar prefix has changed from `badger` to `badger_v3`.
 
+#### New Features
+
+* Add docker images for linux/arm64 ([#3124](https://github.com/jaegertracing/jaeger/pull/3124), [@GaruGaru](https://github.com/GaruGaru))
+* Add s390x support on multiarch docker images ([#2948](https://github.com/jaegertracing/jaeger/pull/2948), [@kun-lu20](https://github.com/kun-lu20))
+* Add TLS support for Prometheus reader ([#3096](https://github.com/jaegertracing/jaeger/pull/3096), [@albertteoh](https://github.com/albertteoh))
+
+##### [Monitor tab for service health metrics](https://github.com/jaegertracing/jaeger/issues/2954)
+
+* Add HTTP handler for metrics querying [#3095](https://github.com/jaegertracing/jaeger/pull/3095), [@albertteoh](https://github.com/albertteoh))
+* Add MetricsQueryService grcp handler [#3091](https://github.com/jaegertracing/jaeger/pull/3091), [@albertteoh](https://github.com/albertteoh))
+* Hook up MetricsQueryService to main funcs ([#3079](https://github.com/jaegertracing/jaeger/pull/3079), [@albertteoh](https://github.com/albertteoh))
+* Add metrics query capability to query service ([#3061](https://github.com/jaegertracing/jaeger/pull/3061), [@albertteoh](https://github.com/albertteoh))
+
+#### Bug fixes, Minor Improvements
+
+* Add build info metrics to Jaeger components ([#3087](https://github.com/jaegertracing/jaeger/pull/3087), [@Ashmita152](https://github.com/Ashmita152))
+* Upgrade gRPC to 1.38.x ([#3096](https://github.com/jaegertracing/jaeger/pull/3096), [@pavolloffay](https://github.com/pavolloffay))
+
 1.23.0 (2021-06-04)
 -------------------
 ### Backend Changes
+
+#### New Features
 
 #### Breaking Changes
 
@@ -77,7 +141,7 @@ Unreleased
 * Remove incorrectly scoped downsample flags from the query service ([#2782](https://github.com/jaegertracing/jaeger/pull/2782), [@joe-elliott](https://github.com/joe-elliott))
     * `--downsampling.hashsalt` removed from jaeger-query
     * `--downsampling.ratio` removed from jaeger-query
-    
+
 #### New Features
 
 * Add TLS Support for gRPC and HTTP endpoints of the Query and Collector servers ([#2337](https://github.com/jaegertracing/jaeger/pull/2337), [#2772](https://github.com/jaegertracing/jaeger/pull/2772), [#2798](https://github.com/jaegertracing/jaeger/pull/2798), [@rjs211](https://github.com/rjs211))
