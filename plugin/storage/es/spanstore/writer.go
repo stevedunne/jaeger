@@ -17,6 +17,7 @@ package spanstore
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -153,6 +154,13 @@ func (s *SpanWriter) WriteSpan(_ context.Context, span *model.Span) error {
 	if serviceIndexName != "" {
 		s.writeService(serviceIndexName, jsonSpan)
 	}
+	//correct rogue duration values
+	if jsonSpan.Duration > 9223372036854775807 {
+		oldVal := jsonSpan.Duration
+		jsonSpan.Duration = (18446744073709551615 - jsonSpan.Duration) + 1
+		jsonSpan.Tags = append(jsonSpan.Tags, dbmodel.KeyValue{Key: "duration-adjusted", Type: "string", Value: fmt.Sprintf("%v|%v|%v", span.Duration, oldVal, jsonSpan.Duration)})
+	}
+
 	s.writeSpan(spanIndexName, jsonSpan)
 	return nil
 }
