@@ -1,4 +1,4 @@
-// Copyright (c) 2020 The Jaeger Authors.
+// Copyright (c) 2021 The Jaeger Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build tools
-// +build tools
+package memory
 
-package jaeger
+import "time"
 
-// https://github.com/golang/go/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
-import (
-	_ "honnef.co/go/tools/cmd/staticcheck"
+type lock struct{}
 
-	_ "github.com/mjibson/esc"
-	_ "github.com/securego/gosec/cmd/gosec"
-	_ "github.com/vektra/mockery/cmd/mockery"
-	_ "github.com/wadey/gocovmerge"
-	_ "golang.org/x/lint/golint"
-)
+// Acquire always returns true for memory storage because it's a single-node
+func (l *lock) Acquire(resource string, ttl time.Duration) (bool, error) {
+	return true, nil
+}
+
+// Forfeit always returns true for memory storage
+func (l *lock) Forfeit(resource string) (bool, error) {
+	return true, nil
+}

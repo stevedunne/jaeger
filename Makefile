@@ -84,7 +84,7 @@ clean:
 
 .PHONY: test
 test: go-gen
-	bash -c "set -e; set -o pipefail; $(GOTEST) ./... | $(COLORIZE)"
+	bash -c "set -e; set -o pipefail; $(GOTEST) -tags=memory_storage_integration ./... | $(COLORIZE)"
 
 .PHONY: all-in-one-integration-test
 all-in-one-integration-test: go-gen
@@ -97,17 +97,14 @@ storage-integration-test: go-gen
 	go clean -testcache
 	bash -c "set -e; set -o pipefail; $(GOTEST) $(STORAGE_PKGS) | $(COLORIZE)"
 
-.PHONY: mem-and-badger-storage-integration-test
-mem-and-badger-storage-integration-test: badger-storage-integration-test grpc-plugin-storage-integration-test
-
 .PHONY: badger-storage-integration-test
 badger-storage-integration-test:
-	STORAGE=badger $(MAKE) storage-integration-test
+	bash -c "set -e; set -o pipefail; $(GOTEST) -tags=badger_storage_integration $(STORAGE_PKGS) | $(COLORIZE)"
 
-.PHONY: grpc-plugin-storage-integration-test
-grpc-plugin-storage-integration-test:
+.PHONY: grpc-storage-integration-test
+grpc-storage-integration-test:
 	(cd examples/memstore-plugin/ && go build .)
-	STORAGE=grpc-plugin $(MAKE) storage-integration-test
+	bash -c "set -e; set -o pipefail; $(GOTEST) -tags=grpc_storage_integration $(STORAGE_PKGS) | $(COLORIZE)"
 
 .PHONY: index-cleaner-integration-test
 index-cleaner-integration-test: docker-images-elastic
@@ -136,7 +133,7 @@ all-srcs:
 
 .PHONY: cover
 cover: nocover
-	$(GOTEST) -timeout 5m -coverprofile cover.out ./...
+	$(GOTEST) -tags=memory_storage_integration -timeout 5m -coverprofile cover.out ./...
 	grep -E -v 'model.pb.*.go' cover.out > cover-nogen.out
 	mv cover-nogen.out cover.out
 	go tool cover -html=cover.out -o cover.html
@@ -370,8 +367,8 @@ changelog:
 
 .PHONY: install-tools
 install-tools:
-	go install github.com/wadey/gocovmerge
-	go install github.com/mjibson/esc
+	go install github.com/vektra/mockery/v2@v2.9.4
+	go install github.com/mjibson/esc@v0.2.0
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.42.0
 
 .PHONY: install-ci
@@ -409,15 +406,11 @@ generate-zipkin-swagger: init-submodules
 	$(SWAGGER) generate server -f ./idl/swagger/zipkin2-api.yaml -t $(SWAGGER_GEN_DIR) -O PostSpans --exclude-main
 	rm $(SWAGGER_GEN_DIR)/restapi/operations/post_spans_urlbuilder.go $(SWAGGER_GEN_DIR)/restapi/server.go $(SWAGGER_GEN_DIR)/restapi/configure_zipkin.go $(SWAGGER_GEN_DIR)/models/trace.go $(SWAGGER_GEN_DIR)/models/list_of_traces.go $(SWAGGER_GEN_DIR)/models/dependency_link.go
 
-.PHONY: install-mockery
-install-mockery:
-	go install github.com/vektra/mockery/.../
-
 .PHONY: generate-mocks
-generate-mocks: install-mockery
-	$(MOCKERY) -all -dir ./pkg/es/ -output ./pkg/es/mocks && rm pkg/es/mocks/ClientBuilder.go
-	$(MOCKERY) -all -dir ./storage/spanstore/ -output ./storage/spanstore/mocks
-	$(MOCKERY) -all -dir ./proto-gen/storage_v1/ -output ./proto-gen/storage_v1/mocks
+generate-mocks: install-tools
+	$(MOCKERY) --all --dir ./pkg/es/ --output ./pkg/es/mocks && rm pkg/es/mocks/ClientBuilder.go
+	$(MOCKERY) --all --dir ./storage/spanstore/ --output ./storage/spanstore/mocks
+	$(MOCKERY) --all --dir ./proto-gen/storage_v1/ --output ./proto-gen/storage_v1/mocks
 
 .PHONY: echo-version
 echo-version:
